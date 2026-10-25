@@ -1,0 +1,18 @@
+{
+  "name": "Daily Timetable & Reminder",
+  "short_name": "Timetable",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020817",
+  "theme_color": "#0b1020",
+  "description": "A mobile-first daily planner that reminds you when activities begin.",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
