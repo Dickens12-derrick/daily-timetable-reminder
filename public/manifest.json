@@ -3,8 +3,8 @@
   "short_name": "Timetable",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#020817",
-  "theme_color": "#0b1020",
+  "background_color": "#f1f5f1",
+  "theme_color": "#f1f5f1",
   "description": "A mobile-first daily planner that reminds you when activities begin.",
   "orientation": "portrait",
   "icons": [

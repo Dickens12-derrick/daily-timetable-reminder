@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Activity {
+  id            String          @id @default(uuid())
+  userId        String?
+  title         String
+  startTime     String
+  endTime       String
+  date          String
+  createdAt     DateTime        @default(now())
+  pushDeliveries PushDelivery[]
+
+  @@index([userId, date, startTime])
+}
+
+model PushSubscription {
+  id         String          @id @default(uuid())
+  userId     String
+  endpoint   String          @unique
+  p256dh     String
+  auth       String
+  timeZone   String          @default("UTC")
+  createdAt  DateTime        @default(now())
+  deliveries PushDelivery[]
+
+  @@index([userId])
+  @@index([timeZone])
+}
+
+model PushDelivery {
+  id             String           @id @default(uuid())
+  activityId     String
+  subscriptionId String
+  deliveredAt    DateTime?
+  attempts       Int              @default(0)
+  activity       Activity         @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  subscription   PushSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, subscriptionId])
+}
