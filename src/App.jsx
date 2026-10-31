@@ -8,6 +8,7 @@ import {
   savePushSubscription,
 } from './services/api';
 import { isSupabaseConfigured, supabase } from './services/supabase';
+import PlannerScene from './components/PlannerScene';
 
 const TOAST_TIMEOUT = 4200;
 
@@ -55,7 +56,7 @@ function encodeApplicationServerKey(key) {
   return Uint8Array.from(window.atob(base64), (character) => character.charCodeAt(0));
 }
 
-function AuthenticationScreen() {
+function AuthenticationScreen({ theme, onThemeChange }) {
   const [mode, setMode] = useState('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -98,6 +99,16 @@ function AuthenticationScreen() {
 
   return (
     <main className="auth-screen">
+      <PlannerScene theme={theme} />
+      <button
+        className="auth-theme-toggle"
+        type="button"
+        onClick={onThemeChange}
+        aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+        title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+      >
+        {theme === 'light' ? '☾' : '☼'}
+      </button>
       <section className="auth-panel">
         <p className="auth-eyebrow">Daily plan</p>
         <h1>{mode === 'sign-in' ? 'Welcome back' : 'Create your account'}</h1>
@@ -122,6 +133,7 @@ function AuthenticationScreen() {
 }
 
 export default function App() {
+  const [theme, setTheme] = useState(() => localStorage.getItem('planner-theme') || 'light');
   const [activities, setActivities] = useState([]);
   const [title, setTitle] = useState('');
   const [startTime, setStartTime] = useState('09:00');
@@ -140,6 +152,12 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('today');
   const [now, setNow] = useState(new Date());
   const notifiedRef = useRef(new Set());
+
+  useEffect(() => {
+    localStorage.setItem('planner-theme', theme);
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+  }, [theme]);
 
   useEffect(() => {
     if (!supabase) {
@@ -373,11 +391,17 @@ export default function App() {
   if (!authReady) {
     return <main className="auth-screen"><p className="auth-description">Loading your account...</p></main>;
   }
-  if (!user) return <AuthenticationScreen />;
+  if (!user) return (
+    <AuthenticationScreen
+      theme={theme}
+      onThemeChange={() => setTheme((current) => current === 'light' ? 'dark' : 'light')}
+    />
+  );
 
   return (
-    <div className="app-shell min-h-screen bg-slate-950 text-slate-100">
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col lg:flex-row">
+    <div className="app-shell min-h-screen bg-slate-950 text-slate-100" data-theme={theme}>
+      <PlannerScene theme={theme} />
+      <div className="planner-layout mx-auto flex min-h-screen max-w-7xl flex-col lg:flex-row">
         <aside className="planner-sidebar w-full border-b border-white/10 bg-slate-950/80 p-4 backdrop-blur md:p-6 lg:w-[420px] lg:border-b-0 lg:border-r lg:border-white/10">
           <div className="planner-brand mb-6 flex items-center justify-between">
             <div>
@@ -391,7 +415,22 @@ export default function App() {
 
           <div className="account-bar">
             <span title={user.email}>{user.email}</span>
-            <button type="button" onClick={signOut}>Sign out</button>
+            <div className="account-actions">
+              <button
+                className="theme-toggle"
+                type="button"
+                onClick={() => setTheme((current) => current === 'light' ? 'dark' : 'light')}
+                aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+                title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+              >
+                {theme === 'light' ? (
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.1A8.5 8.5 0 0 1 8.9 3.8 8.7 8.7 0 1 0 20.2 15.1Z" /></svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" /></svg>
+                )}
+              </button>
+              <button type="button" onClick={signOut}>Sign out</button>
+            </div>
           </div>
 
           <div className="calendar-controls mb-5 flex items-center gap-2">

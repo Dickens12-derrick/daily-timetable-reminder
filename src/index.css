@@ -42,27 +42,356 @@ button {
 .app-shell {
   background: transparent !important;
   color: #17231d !important;
+  position: relative;
+  isolation: isolate;
+}
+
+.scene-backdrop {
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.32;
+  transition: opacity 300ms ease;
+}
+
+.scene-backdrop canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.planner-layout {
+  position: relative;
+  z-index: 1;
+}
+
+.account-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.account-bar .theme-toggle {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  place-items: center;
+  border: 1px solid #dce5dd;
+  border-radius: 9px;
+  background: #fff;
+  color: #276c4b;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.account-bar .theme-toggle:hover {
+  transform: translateY(-2px) rotate(-5deg);
+  border-color: #82b294;
+  background: #eff7f0;
+}
+
+button,
+input,
+.activity-card,
+.rhythm-item,
+.timeline-row,
+.overview-panel,
+.timeline-panel {
+  transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease,
+    box-shadow 180ms ease, transform 180ms ease;
+}
+
+button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid rgba(67, 143, 99, 0.42);
+  outline-offset: 2px;
+}
+
+.activity-card:hover,
+.rhythm-item:hover {
+  transform: translateY(-2px);
+  border-color: #bdd6c3 !important;
+  box-shadow: 0 9px 22px rgba(30, 52, 38, 0.09) !important;
+}
+
+.timeline-row:hover {
+  transform: translateX(3px);
+}
+
+.primary-action:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(35, 109, 75, 0.24) !important;
+}
+
+.tab-button:hover,
+.calendar-controls button:hover,
+.notification-toggle:not(:disabled):hover {
+  transform: translateY(-2px);
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  background: #101914;
+  color: #e2ebe4;
+}
+
+html[data-theme='dark'] body {
+  background:
+    linear-gradient(rgba(185, 210, 192, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(185, 210, 192, 0.035) 1px, transparent 1px),
+    #101914;
+  color: #e2ebe4;
+}
+
+html[data-theme='dark'] .scene-backdrop {
+  opacity: 0.42;
+}
+
+html[data-theme='dark'] .app-shell {
+  color: #e2ebe4 !important;
+}
+
+html[data-theme='dark'] .planner-sidebar {
+  background: rgba(20, 30, 24, 0.68) !important;
+  border-color: #2d4033 !important;
+  box-shadow: 10px 0 34px rgba(0, 0, 0, 0.12);
+}
+
+html[data-theme='dark'] .planner-brand h1,
+html[data-theme='dark'] .planner-main h2 {
+  color: #e8f0e9 !important;
+}
+
+html[data-theme='dark'] .planner-brand > div:last-child,
+html[data-theme='dark'] .calendar-controls button,
+html[data-theme='dark'] .calendar-controls input,
+html[data-theme='dark'] .notification-toggle,
+html[data-theme='dark'] .activity-form input {
+  border-color: #354a3b !important;
+  background: #1a2820 !important;
+  color: #e1ece3 !important;
+}
+
+html[data-theme='dark'] .app-shell .text-slate-100,
+html[data-theme='dark'] .app-shell .text-slate-200,
+html[data-theme='dark'] .app-shell .text-slate-300,
+html[data-theme='dark'] .app-shell .text-white {
+  color: #e1eae3 !important;
+}
+
+html[data-theme='dark'] .app-shell .text-slate-400,
+html[data-theme='dark'] .app-shell .text-slate-500 {
+  color: #a0b0a5 !important;
+}
+
+html[data-theme='dark'] .app-shell .text-violet-200,
+html[data-theme='dark'] .app-shell .text-violet-300,
+html[data-theme='dark'] .app-shell .text-cyan-100,
+html[data-theme='dark'] .app-shell .text-cyan-200,
+html[data-theme='dark'] .app-shell .text-cyan-300 {
+  color: #8ed3aa !important;
+}
+
+html[data-theme='dark'] .activity-form,
+html[data-theme='dark'] .activity-card,
+html[data-theme='dark'] .rhythm-item {
+  border-color: #304337 !important;
+  background: #1a2820 !important;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+html[data-theme='dark'] .activity-form label,
+html[data-theme='dark'] .activity-list > div:first-child {
+  color: #bdcbbf !important;
+}
+
+html[data-theme='dark'] .activity-card button {
+  border-color: #67483e !important;
+  background: #30221e !important;
+  color: #efb4a1 !important;
+}
+
+html[data-theme='dark'] .empty-state {
+  border-color: #354a3b !important;
+  background: #18251d !important;
+  color: #a0b0a5 !important;
+}
+
+html[data-theme='dark'] .planner-main {
+  background: rgba(16, 25, 20, 0.24);
+}
+
+html[data-theme='dark'] .overview-panel,
+html[data-theme='dark'] .timeline-panel {
+  border-color: #304337 !important;
+  background: rgba(24, 36, 28, 0.38) !important;
+  box-shadow: 0 9px 28px rgba(0, 0, 0, 0.16) !important;
+}
+
+html[data-theme='dark'] .overview-panel > div:first-child > div:last-child,
+html[data-theme='dark'] .timeline-panel > div:first-child > div:last-child {
+  border-color: #385943 !important;
+  background: #203629 !important;
+  color: #9cddb2 !important;
+}
+
+html[data-theme='dark'] .rhythm-item .bg-slate-700 {
+  background: #2c4033 !important;
+}
+
+html[data-theme='dark'] .rhythm-item .bg-gradient-to-r {
+  background: #5da87b !important;
+}
+
+html[data-theme='dark'] .rhythm-item .bg-emerald-500\/15 {
+  background: #244732 !important;
+  color: #9cddb2 !important;
+}
+
+html[data-theme='dark'] .timeline-row {
+  border-color: #293a2e !important;
+  background: rgba(24, 37, 29, 0.32) !important;
+}
+
+html[data-theme='dark'] .timeline-row:hover {
+  border-color: #42644b !important;
+  background: #203629 !important;
+}
+
+html[data-theme='dark'] .timeline-row:has(.border-emerald-400\/50) {
+  border-color: #426e4e !important;
+  background: #1d3124 !important;
+}
+
+html[data-theme='dark'] .timeline-row .border-dashed {
+  border-color: #314336 !important;
+}
+
+html[data-theme='dark'] .timeline-row .rounded-xl.border {
+  border-color: #46664d !important;
+  background: #263d2c !important;
+}
+
+html[data-theme='dark'] .mobile-tabs .tab-button {
+  background: #26372b !important;
+  color: #bdcbbf !important;
+}
+
+html[data-theme='dark'] .mobile-tabs .tab-button-active {
+  background: #367a55 !important;
+  color: #fff !important;
+}
+
+html[data-theme='dark'] .account-bar {
+  color: #a0b0a5;
+}
+
+html[data-theme='dark'] .account-bar .theme-toggle {
+  border-color: #3a5543;
+  background: #203328;
+  color: #9cddb2;
+}
+
+html[data-theme='dark'] .account-bar .theme-toggle:hover {
+  border-color: #70a980;
+  background: #2b4635;
+}
+
+html[data-theme='dark'] .reminder-toast {
+  border-color: #45694e !important;
+  background: rgba(24, 36, 28, 0.97) !important;
+}
+
+html[data-theme='dark'] .auth-panel {
+  border-color: #304337;
+  background: rgba(24, 36, 28, 0.95);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.24);
+}
+
+html[data-theme='dark'] .auth-panel h1 {
+  color: #e8f0e9;
+}
+
+html[data-theme='dark'] .auth-description,
+html[data-theme='dark'] .auth-panel > p:not(.auth-eyebrow) {
+  color: #aab9ae;
+}
+
+html[data-theme='dark'] .auth-form label {
+  color: #bdcbbf;
+}
+
+html[data-theme='dark'] .auth-form input {
+  border-color: #354a3b;
+  background: #1a2820;
+  color: #e1ece3;
+}
+
+html[data-theme='dark'] .auth-theme-toggle {
+  border-color: #3a5543;
+  background: #203328;
+  color: #9cddb2;
 }
 
 .auth-screen {
+  position: relative;
+  isolation: isolate;
   display: grid;
   min-height: 100vh;
   place-items: center;
   padding: 24px;
-  background:
-    linear-gradient(rgba(23, 35, 29, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(23, 35, 29, 0.025) 1px, transparent 1px),
-    #f1f5f1;
-  background-size: 32px 32px;
+  overflow: hidden;
+  background: transparent;
 }
 
 .auth-panel {
+  position: relative;
+  z-index: 1;
   width: min(100%, 440px);
   padding: 36px;
   border: 1px solid #dfe7df;
   border-radius: 14px;
   background: #fff;
   box-shadow: 0 18px 50px rgba(30, 52, 38, 0.09);
+}
+
+.auth-theme-toggle {
+  position: fixed;
+  z-index: 2;
+  top: 20px;
+  right: 20px;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid #dce5dd;
+  border-radius: 10px;
+  background: #fff;
+  color: #276c4b;
+  font-size: 1.25rem;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.auth-theme-toggle:hover {
+  transform: translateY(-2px) rotate(-5deg);
+  border-color: #82b294;
+  background: #eff7f0;
 }
 
 .auth-eyebrow {
@@ -176,7 +505,7 @@ button {
 
 .planner-sidebar {
   z-index: 1;
-  background: rgba(248, 250, 248, 0.96) !important;
+  background: rgba(248, 250, 248, 0.68) !important;
   border-color: #dce5dd !important;
   box-shadow: 10px 0 34px rgba(32, 54, 41, 0.035);
 }
@@ -304,14 +633,14 @@ button {
 }
 
 .planner-main {
-  background: rgba(255, 255, 255, 0.54);
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .overview-panel,
 .timeline-panel {
   border-color: #dfe7df !important;
   border-radius: 12px !important;
-  background: rgba(255, 255, 255, 0.93) !important;
+  background: rgba(255, 255, 255, 0.38) !important;
   box-shadow: 0 8px 24px rgba(30, 52, 38, 0.045) !important;
 }
 
@@ -347,7 +676,7 @@ button {
   min-height: 58px;
   border-color: #edf1ed !important;
   border-radius: 8px !important;
-  background: #fbfcfb !important;
+  background: rgba(251, 252, 251, 0.32) !important;
   transition: background 150ms ease, border-color 150ms ease;
 }
 
@@ -425,6 +754,16 @@ button {
   }
 }
 
+@media (max-width: 600px) {
+  .scene-backdrop {
+    opacity: 0.72;
+  }
+
+  html[data-theme='dark'] .scene-backdrop {
+    opacity: 0.82;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -444,4 +783,12 @@ button {
 ::-webkit-scrollbar-thumb {
   background: #bdc9bf;
   border-radius: 999px;
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-track {
+  background: #17231b;
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: #48604d;
 }
