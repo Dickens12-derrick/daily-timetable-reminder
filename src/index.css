@@ -718,6 +718,12 @@ html[data-theme='dark'] .password-visibility-toggle:hover {
   color: #283a2e;
 }
 
+@media (max-width: 380px) {
+  .activity-time-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .activity-card,
 .rhythm-item {
   border-color: #e2e9e3 !important;

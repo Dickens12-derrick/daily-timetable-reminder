@@ -38,7 +38,7 @@ npm run server
 npm run dev
 ```
 
-The frontend is available at `http://localhost:5175`; the API listens on `http://localhost:5000`. Create an account or sign in with Supabase. Each activity is stored under the verified account. Enable reminders in the app and allow browser notifications to associate that device's push subscription with the signed-in user.
+The frontend is available at `http://localhost:5175`; the API listens on `http://localhost:5000`. Keep both processes running while using the app. To test from a phone on the same Wi-Fi, open the Network URL printed by Vite. Local `/api` requests are proxied to the API, so the browser does not need a `VITE_API_URL` pointing to its own `localhost`. Create an account or sign in with Supabase. Each activity is stored under the verified account. Enable reminders in the app and allow browser notifications to associate that device's push subscription with the signed-in user.
 
 The API process must stay running to dispatch scheduled push notifications. For deployment, use an always-on Node service for this API, configure the same environment variables there, and set `CLIENT_ORIGIN` to the exact HTTPS frontend origin. Set `VITE_API_URL` to the HTTPS API URL when building the frontend. HTTPS is required for installable PWA and push notifications on real devices.
 

@@ -1,13 +1,22 @@
 import { supabase } from './supabase';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim().replace(/\/+$/, '') || '';
+const isLocalApiUrl = /^https?:\/\/(localhost|127(?:\.\d{1,3}){3}|\[::1\])(?::\d+)?$/i.test(configuredApiUrl);
+const API_BASE_URL = import.meta.env.DEV || isLocalApiUrl ? '' : configuredApiUrl;
+
+function getApiUrl(path) {
+  if (!import.meta.env.DEV && !API_BASE_URL) {
+    throw new Error('The API is not configured for this deployment. Set VITE_API_URL to your HTTPS API URL and rebuild the app.');
+  }
+  return `${API_BASE_URL}${path}`;
+}
 
 async function request(path, options = {}) {
   if (!supabase) throw new Error('Authentication is not configured. Add the Supabase frontend settings to .env.');
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) throw new Error('Sign in to continue.');
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(getApiUrl(path), {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -48,7 +57,7 @@ export function deleteActivity(id) {
 }
 
 export async function getVapidPublicKey() {
-  const response = await fetch(`${API_BASE_URL}/api/notifications/vapid-public-key`);
+  const response = await fetch(getApiUrl('/api/notifications/vapid-public-key'));
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || 'Unable to load push notification settings.');
   return payload.publicKey;
