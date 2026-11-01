@@ -230,6 +230,18 @@ export default function App() {
       notifiedRef.current.add(`${activity.id}-${key}`);
       setToast({ title: activity.title, text: `${activity.startTime} - ${activity.endTime}` });
 
+      if ('Notification' in window && window.Notification.permission === 'granted') {
+        try {
+          new window.Notification('Activity Reminder', {
+            body: `It's time for: ${activity.title}`,
+            icon: '/icon.svg',
+            tag: `activity-${activity.id}`,
+          });
+        } catch (error) {
+          console.error('Unable to show activity notification:', error);
+        }
+      }
+
       try {
         const AudioCtor = window.AudioContext || window.webkitAudioContext;
         if (AudioCtor) {
