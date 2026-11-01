@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import {
   createActivity as createActivityRequest,
   deleteActivity as deleteActivityRequest,
   getActivities,
@@ -50,16 +62,27 @@ function sortActivities(activities) {
   return [...activities].sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
 }
 
+function formatActivityDate(dateString) {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
 function encodeApplicationServerKey(key) {
   const padding = '='.repeat((4 - (key.length % 4)) % 4);
   const base64 = `${key}${padding}`.replace(/-/g, '+').replace(/_/g, '/');
   return Uint8Array.from(window.atob(base64), (character) => character.charCodeAt(0));
 }
 
-function AuthenticationScreen({ theme, onThemeChange }) {
+function AuthenticationScreen({ theme, onThemeChange, isPasswordRecovery, onPasswordRecoveryComplete }) {
   const [mode, setMode] = useState('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,6 +93,24 @@ function AuthenticationScreen({ theme, onThemeChange }) {
     setMessage('');
     setIsSubmitting(true);
     try {
+      if (isPasswordRecovery) {
+        if (password !== passwordConfirmation) throw new Error('The passwords do not match.');
+        const { error: updateError } = await supabase.auth.updateUser({ password });
+        if (updateError) throw updateError;
+        setMessage('Your password has been updated.');
+        onPasswordRecoveryComplete();
+        return;
+      }
+
+      if (mode === 'reset') {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/?password-reset=1`,
+        });
+        if (resetError) throw resetError;
+        setMessage('If an account exists for that email, a password reset link is on its way.');
+        return;
+      }
+
       const result = mode === 'sign-in'
         ? await supabase.auth.signInWithPassword({ email, password })
         : await supabase.auth.signUp({ email, password });
@@ -111,22 +152,76 @@ function AuthenticationScreen({ theme, onThemeChange }) {
       </button>
       <section className="auth-panel">
         <p className="auth-eyebrow">Daily plan</p>
-        <h1>{mode === 'sign-in' ? 'Welcome back' : 'Create your account'}</h1>
-        <p className="auth-description">Your timetable and reminders stay connected to your account.</p>
+        <h1>{isPasswordRecovery ? 'Choose a new password' : mode === 'reset' ? 'Reset your password' : mode === 'sign-in' ? 'Welcome To Daily Plan' : 'Create your account'}</h1>
+        <p className="auth-description">{isPasswordRecovery ? 'Set a new password for your account.' : 'Your timetable and reminders stay connected to your account.'}</p>
         <form className="auth-form" onSubmit={submit}>
-          <label htmlFor="auth-email">Email</label>
-          <input id="auth-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
-          <label htmlFor="auth-password">Password</label>
-          <input id="auth-password" type="password" autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'} minLength="8" required value={password} onChange={(event) => setPassword(event.target.value)} />
+          {!isPasswordRecovery && <label htmlFor="auth-email">Email</label>}
+          {!isPasswordRecovery && <input id="auth-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />}
+          {(isPasswordRecovery || mode !== 'reset') && (
+            <>
+              <label htmlFor="auth-password">{isPasswordRecovery ? 'New password' : 'Password'}</label>
+              <div className="password-input-wrap">
+                <input
+                  id="auth-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
+                  minLength="8"
+                  required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+                <button
+                  className="password-visibility-toggle"
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              {isPasswordRecovery && (
+                <>
+                  <label htmlFor="auth-password-confirmation">Confirm new password</label>
+                  <input
+                    id="auth-password-confirmation"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    minLength="8"
+                    required
+                    value={passwordConfirmation}
+                    onChange={(event) => setPasswordConfirmation(event.target.value)}
+                  />
+                </>
+              )}
+            </>
+          )}
           {error && <p className="auth-error" role="alert">{error}</p>}
           {message && <p className="auth-message" role="status">{message}</p>}
           <button className="primary-action" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Please wait...' : mode === 'sign-in' ? 'Sign in' : 'Create account'}
+            {isSubmitting
+              ? 'Please wait...'
+              : isPasswordRecovery
+                ? 'Update password'
+                : mode === 'reset'
+                  ? 'Send reset link'
+                  : mode === 'sign-in'
+                    ? 'Sign in'
+                    : 'Create account'}
           </button>
         </form>
-        <button className="auth-mode-toggle" type="button" onClick={() => { setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in'); setError(''); setMessage(''); }}>
-          {mode === 'sign-in' ? 'New here? Create an account' : 'Already have an account? Sign in'}
-        </button>
+        {!isPasswordRecovery && (
+          <div className="auth-links">
+            {mode === 'sign-in' && (
+              <button className="auth-mode-toggle" type="button" onClick={() => { setMode('reset'); setError(''); setMessage(''); }}>
+                Forgot your password?
+              </button>
+            )}
+            <button className="auth-mode-toggle" type="button" onClick={() => { setMode(mode === 'sign-up' ? 'sign-in' : 'sign-up'); setError(''); setMessage(''); }}>
+              {mode === 'sign-up' ? 'Already have an account? Sign in' : 'New here? Create an account'}
+            </button>
+          </div>
+        )}
       </section>
     </main>
   );
@@ -135,6 +230,7 @@ function AuthenticationScreen({ theme, onThemeChange }) {
 export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('planner-theme') || 'light');
   const [activities, setActivities] = useState([]);
+  const [allActivities, setAllActivities] = useState([]);
   const [title, setTitle] = useState('');
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:00');
@@ -147,9 +243,13 @@ export default function App() {
     'Notification' in window ? window.Notification.permission : 'unsupported'
   ));
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [activeTab, setActiveTab] = useState('today');
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(() => (
+    new URLSearchParams(window.location.search).has('password-reset')
+  ));
   const [now, setNow] = useState(new Date());
   const notifiedRef = useRef(new Set());
 
@@ -173,15 +273,37 @@ export default function App() {
         setAuthReady(true);
       }
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user || null);
       setPushEnabled(false);
+      if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
     });
     return () => {
       active = false;
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!authReady || !user) {
+      setAllActivities([]);
+      return undefined;
+    }
+
+    let active = true;
+    setHistoryLoading(true);
+    getActivities()
+      .then((items) => {
+        if (active) setAllActivities(items);
+      })
+      .catch((error) => {
+        if (active) setApiError(error.message);
+      })
+      .finally(() => {
+        if (active) setHistoryLoading(false);
+      });
+    return () => { active = false; };
+  }, [authReady, user?.id]);
 
   useEffect(() => {
     if (!authReady || !user) {
@@ -277,7 +399,44 @@ export default function App() {
     }
   }, [activities, now, selectedDate, toast, user]);
 
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  function getStatus(activity) {
+    const today = getLocalDateString(now);
+    if (activity.date < today) return 'done';
+    if (activity.date > today) return 'up-next';
+    const start = timeToMinutes(activity.startTime);
+    const end = timeToMinutes(activity.endTime);
+    if (nowMinutes >= end) return 'done';
+    if (nowMinutes >= start) return 'live';
+    return 'up-next';
+  }
+
   const sortedActivities = useMemo(() => sortActivities(activities), [activities]);
+  const completedActivities = useMemo(() => allActivities
+    .filter((activity) => getStatus(activity) === 'done')
+    .sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime)), [allActivities, now]);
+  const weeklyActivityData = useMemo(() => Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (6 - index));
+    const dateString = getLocalDateString(date);
+    const dailyItems = allActivities.filter((activity) => activity.date === dateString);
+    const done = dailyItems.filter((activity) => getStatus(activity) === 'done');
+    const pending = dailyItems.filter((activity) => getStatus(activity) !== 'done');
+    const minutes = (items) => items.reduce((total, activity) => (
+      total + Math.max(0, timeToMinutes(activity.endTime) - timeToMinutes(activity.startTime))
+    ), 0);
+    return {
+      day: date.toLocaleDateString(undefined, { weekday: 'short' }),
+      completed: done.length,
+      planned: pending.length,
+      completedMinutes: minutes(done),
+    };
+  }), [allActivities, now]);
+  const completedCount = completedActivities.length;
+  const completedMinutes = completedActivities.reduce((total, activity) => (
+    total + Math.max(0, timeToMinutes(activity.endTime) - timeToMinutes(activity.startTime))
+  ), 0);
+  const completionRate = allActivities.length ? Math.round((completedCount / allActivities.length) * 100) : 0;
 
   const timelineItems = useMemo(() => {
     return Array.from({ length: 48 }, (_, index) => {
@@ -293,7 +452,10 @@ export default function App() {
     });
   }, [sortedActivities]);
 
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const finishPasswordRecovery = () => {
+    window.history.replaceState({}, '', window.location.pathname);
+    setIsPasswordRecovery(false);
+  };
 
   const requestNotificationPermission = async () => {
     if (!('Notification' in window)) {
@@ -356,6 +518,7 @@ export default function App() {
         date: selectedDate,
       });
       setActivities((prev) => sortActivities([...prev, nextItem]));
+      setAllActivities((prev) => [...prev, nextItem]);
       setTitle('');
       setStartTime('09:00');
       setEndTime('10:00');
@@ -372,17 +535,10 @@ export default function App() {
     try {
       await deleteActivityRequest(id);
       setActivities((prev) => prev.filter((activity) => activity.id !== id));
+      setAllActivities((prev) => prev.filter((activity) => activity.id !== id));
     } catch (error) {
       setApiError(error.message);
     }
-  };
-
-  const getStatus = (activity) => {
-    const start = timeToMinutes(activity.startTime);
-    const end = timeToMinutes(activity.endTime);
-    if (nowMinutes >= start && nowMinutes < end) return 'live';
-    if (nowMinutes < start) return 'up-next';
-    return 'done';
   };
 
   useEffect(() => {
@@ -403,10 +559,12 @@ export default function App() {
   if (!authReady) {
     return <main className="auth-screen"><p className="auth-description">Loading your account...</p></main>;
   }
-  if (!user) return (
+  if (!user || isPasswordRecovery) return (
     <AuthenticationScreen
       theme={theme}
       onThemeChange={() => setTheme((current) => current === 'light' ? 'dark' : 'light')}
+      isPasswordRecovery={isPasswordRecovery}
+      onPasswordRecoveryComplete={finishPasswordRecovery}
     />
   );
 
@@ -596,24 +754,27 @@ export default function App() {
         </aside>
 
         <main className="planner-main flex-1 p-4 md:p-6">
-          <div className="mobile-tabs mb-4 flex items-center justify-between lg:hidden">
-            <button
-              type="button"
-              onClick={() => setActiveTab('today')}
-              className={`tab-button flex-1 rounded-xl px-4 py-2 text-sm font-medium ${activeTab === 'today' ? 'tab-button-active' : ''}`}
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('timeline')}
-              className={`tab-button ml-2 flex-1 rounded-xl px-4 py-2 text-sm font-medium ${activeTab === 'timeline' ? 'tab-button-active' : ''}`}
-            >
-              Timeline
-            </button>
+          <div className="mobile-tabs mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4" role="tablist" aria-label="Planner views">
+            {[
+              ['today', 'Today'],
+              ['timeline', 'Timeline'],
+              ['history', 'History'],
+              ['insights', 'Insights'],
+            ].map(([tab, label]) => (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab}
+                onClick={() => setActiveTab(tab)}
+                className={`tab-button rounded-xl px-3 py-2 text-sm font-medium ${activeTab === tab ? 'tab-button-active' : ''}`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
-          <div className={`${activeTab === 'today' ? 'block' : 'hidden'} lg:block`}>
+          <div className={activeTab === 'today' ? 'block' : 'hidden'}>
             <div className="overview-panel rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-glow md:p-5">
               <div className="mb-5 flex items-center justify-between">
                 <div>
@@ -663,7 +824,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className={`${activeTab === 'timeline' ? 'block' : 'hidden'} lg:block`}>
+          <div className={activeTab === 'timeline' ? 'block' : 'hidden'}>
             <div className="timeline-panel rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-glow md:p-5">
               <div className="mb-4 flex items-center justify-between">
                 <div>
@@ -706,6 +867,118 @@ export default function App() {
                 })}
               </div>
             </div>
+          </div>
+
+          <div className={activeTab === 'history' ? 'block' : 'hidden'}>
+            <section className="history-panel overview-panel rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-glow md:p-5" aria-labelledby="history-title">
+              <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="section-kicker">Your record</p>
+                  <h2 id="history-title" className="mt-2 text-xl font-semibold">Completed activities</h2>
+                </div>
+                <span className="history-count">{completedCount} complete</span>
+              </div>
+              {historyLoading ? (
+                <div className="empty-state p-5" role="status">Loading your history...</div>
+              ) : completedActivities.length === 0 ? (
+                <div className="empty-state p-5">Completed activities will appear here after their scheduled end time.</div>
+              ) : (
+                <div className="history-list">
+                  {completedActivities.map((activity) => (
+                    <article className="history-entry" key={activity.id}>
+                      <div className="history-mark" aria-hidden="true">✓</div>
+                      <div className="history-entry-copy">
+                        <h3>{activity.title}</h3>
+                        <p>{formatActivityDate(activity.date)} · {activity.startTime}–{activity.endTime}</p>
+                      </div>
+                      <span className="history-duration">{timeToMinutes(activity.endTime) - timeToMinutes(activity.startTime)} min</span>
+                      <button
+                        type="button"
+                        className="history-date-button"
+                        onClick={() => { setSelectedDate(activity.date); setActiveTab('today'); }}
+                        aria-label={`View schedule for ${formatActivityDate(activity.date)}`}
+                      >
+                        View day
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+
+          <div className={activeTab === 'insights' ? 'block' : 'hidden'}>
+            <section className="insights-view" aria-labelledby="insights-title">
+              <div className="insights-heading">
+                <div>
+                  <p className="section-kicker">Your consistency</p>
+                  <h2 id="insights-title">Activity insights</h2>
+                </div>
+                <span className="insights-period">Last 7 days</span>
+              </div>
+
+              <div className="insight-metrics">
+                <article className="insight-metric">
+                  <span>Completed</span>
+                  <strong>{completedCount}</strong>
+                  <small>activities all time</small>
+                </article>
+                <article className="insight-metric">
+                  <span>Time completed</span>
+                  <strong>{Math.floor(completedMinutes / 60)}<small>h</small> {completedMinutes % 60}<small>m</small></strong>
+                  <small>scheduled time elapsed</small>
+                </article>
+                <article className="insight-metric">
+                  <span>Completion rate</span>
+                  <strong>{completionRate}<small>%</small></strong>
+                  <small>of all saved activities</small>
+                </article>
+              </div>
+
+              {allActivities.length === 0 ? (
+                <div className="empty-state p-5">Add activities to start building your progress charts.</div>
+              ) : (
+                <div className="charts-grid">
+                  <article className="chart-panel">
+                    <div className="chart-heading">
+                      <h3>Daily activity count</h3>
+                      <p>Completed vs. still planned</p>
+                    </div>
+                    <div className="chart-canvas" role="img" aria-label="Bar chart of completed and planned activities for each of the last seven days">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={weeklyActivityData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                          <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fill: 'var(--chart-label)', fontSize: 12 }} />
+                          <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fill: 'var(--chart-label)', fontSize: 12 }} />
+                          <Tooltip cursor={{ fill: 'var(--chart-cursor)' }} contentStyle={{ background: 'var(--chart-tooltip)', border: '1px solid var(--chart-grid)', borderRadius: 8, color: 'var(--chart-text)' }} />
+                          <Legend />
+                          <Bar dataKey="completed" name="Completed" fill="#32835b" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="planned" name="Planned / active" fill="#d5a248" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </article>
+
+                  <article className="chart-panel">
+                    <div className="chart-heading">
+                      <h3>Completed minutes</h3>
+                      <p>Scheduled duration completed each day</p>
+                    </div>
+                    <div className="chart-canvas" role="img" aria-label="Line chart of completed activity minutes for each of the last seven days">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={weeklyActivityData} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                          <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fill: 'var(--chart-label)', fontSize: 12 }} />
+                          <YAxis tickLine={false} axisLine={false} tick={{ fill: 'var(--chart-label)', fontSize: 12 }} />
+                          <Tooltip contentStyle={{ background: 'var(--chart-tooltip)', border: '1px solid var(--chart-grid)', borderRadius: 8, color: 'var(--chart-text)' }} />
+                          <Line type="monotone" dataKey="completedMinutes" name="Minutes" stroke="#32835b" strokeWidth={3} dot={{ r: 4, fill: '#32835b' }} activeDot={{ r: 6 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </article>
+                </div>
+              )}
+            </section>
           </div>
         </main>
       </div>
