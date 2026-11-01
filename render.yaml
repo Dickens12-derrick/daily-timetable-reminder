@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: daily-timetable-api
+    runtime: node
+    plan: 0.5c-512mb
+    buildCommand: npm install && npx prisma generate
+    startCommand: npx prisma migrate deploy && node server.js
+    disk:
+      name: activity-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        value: file:/var/data/prod.db
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
