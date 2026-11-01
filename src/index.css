@@ -605,10 +605,84 @@ html[data-theme='dark'] .password-visibility-toggle:hover {
 }
 
 .activity-form {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
   border-color: #dce5dd !important;
   border-radius: 12px !important;
   background: #fff !important;
   box-shadow: 0 8px 22px rgba(30, 52, 38, 0.055) !important;
+}
+
+.activity-form > div,
+.activity-form input {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.activity-time-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.activity-time-fields > div {
+  min-width: 0;
+}
+
+.activity-time-fields input {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.planner-brand-actions {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.install-app-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 11px;
+  border: 1px solid #cfe0d3;
+  border-radius: 8px;
+  background: #fff;
+  color: #236d4b;
+  font-size: 0.77rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.install-app-button span {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.install-app-button:hover {
+  border-color: #75a88a;
+  background: #f0f7f1;
+}
+
+.install-app-block {
+  margin: 0 0 18px;
+}
+
+.install-app-help {
+  margin: 7px 0 0;
+  color: #526358;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.planner-install-help {
+  margin: -16px 0 18px;
 }
 
 .activity-form label {
@@ -989,6 +1063,21 @@ html[data-theme='dark'] .history-mark {
   background: #39835d !important;
 }
 
+html[data-theme='dark'] .install-app-button {
+  border-color: #3a5543;
+  background: #203328;
+  color: #9cddb2;
+}
+
+html[data-theme='dark'] .install-app-button:hover {
+  border-color: #70a980;
+  background: #2b4635;
+}
+
+html[data-theme='dark'] .install-app-help {
+  color: #a0b0a5;
+}
+
 @keyframes rise-in {
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1055,6 +1144,31 @@ html[data-theme='dark'] .history-mark {
   .history-date-button {
     grid-column: 2 / span 2;
     justify-self: start;
+  }
+}
+
+@media (max-width: 420px) {
+  .planner-brand {
+    gap: 10px;
+  }
+
+  .planner-brand h1 {
+    font-size: 1.3rem !important;
+  }
+
+  .planner-clock {
+    padding-right: 8px !important;
+    padding-left: 8px !important;
+    font-size: 0.68rem !important;
+  }
+
+  .activity-form {
+    padding: 13px !important;
+  }
+
+  .activity-time-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
   }
 }
 

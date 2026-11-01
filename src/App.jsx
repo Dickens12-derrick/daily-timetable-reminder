@@ -77,7 +77,7 @@ function encodeApplicationServerKey(key) {
   return Uint8Array.from(window.atob(base64), (character) => character.charCodeAt(0));
 }
 
-function AuthenticationScreen({ theme, onThemeChange, isPasswordRecovery, onPasswordRecoveryComplete }) {
+function AuthenticationScreen({ theme, onThemeChange, isPasswordRecovery, onPasswordRecoveryComplete, onInstallApp, isAppInstalled, installHelp }) {
   const [mode, setMode] = useState('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -152,6 +152,14 @@ function AuthenticationScreen({ theme, onThemeChange, isPasswordRecovery, onPass
       </button>
       <section className="auth-panel">
         <p className="auth-eyebrow">Daily plan</p>
+        {!isAppInstalled && (
+          <div className="install-app-block">
+            <button type="button" className="install-app-button" onClick={onInstallApp}>
+              <span aria-hidden="true">↓</span> Install app
+            </button>
+            {installHelp && <p className="install-app-help" role="status">{installHelp}</p>}
+          </div>
+        )}
         <h1>{isPasswordRecovery ? 'Choose a new password' : mode === 'reset' ? 'Reset your password' : mode === 'sign-in' ? 'Welcome To Daily Plan' : 'Create your account'}</h1>
         <p className="auth-description">{isPasswordRecovery ? 'Set a new password for your account.' : 'Your timetable and reminders stay connected to your account.'}</p>
         <form className="auth-form" onSubmit={submit}>
@@ -247,6 +255,11 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [activeTab, setActiveTab] = useState('today');
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [isAppInstalled, setIsAppInstalled] = useState(() => (
+    window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
+  ));
+  const [installHelp, setInstallHelp] = useState('');
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(() => (
     new URLSearchParams(window.location.search).has('password-reset')
   ));
@@ -337,6 +350,41 @@ export default function App() {
     if (!('serviceWorker' in navigator)) return;
     navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const handleInstallPrompt = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    const handleInstalled = () => {
+      setIsAppInstalled(true);
+      setInstallPrompt(null);
+      setInstallHelp('');
+    };
+
+    window.addEventListener('beforeinstallprompt', handleInstallPrompt);
+    window.addEventListener('appinstalled', handleInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
+      window.removeEventListener('appinstalled', handleInstalled);
+    };
+  }, []);
+
+  const installApp = async () => {
+    setInstallHelp('');
+    if (installPrompt) {
+      await installPrompt.prompt();
+      const { outcome } = await installPrompt.userChoice;
+      if (outcome === 'accepted') setIsAppInstalled(true);
+      setInstallPrompt(null);
+      return;
+    }
+
+    const isAppleMobile = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+    setInstallHelp(isAppleMobile
+      ? 'In Safari, tap Share, then Add to Home Screen.'
+      : 'Open your browser menu and choose Install app or Add to Home Screen.');
+  };
 
   useEffect(() => {
     if (!user || selectedDate !== getLocalDateString()) return undefined;
@@ -565,6 +613,9 @@ export default function App() {
       onThemeChange={() => setTheme((current) => current === 'light' ? 'dark' : 'light')}
       isPasswordRecovery={isPasswordRecovery}
       onPasswordRecoveryComplete={finishPasswordRecovery}
+      onInstallApp={installApp}
+      isAppInstalled={isAppInstalled}
+      installHelp={installHelp}
     />
   );
 
@@ -578,10 +629,18 @@ export default function App() {
               <p className="text-xs uppercase tracking-[0.24em] text-violet-300">Daily plan</p>
               <h1 className="mt-2 text-2xl font-bold">Timetable</h1>
             </div>
-            <div className="rounded-full border border-violet-500/50 bg-violet-500/10 px-3 py-1 text-xs text-violet-200">
-              {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <div className="planner-brand-actions">
+              {!isAppInstalled && (
+                <button className="install-app-button" type="button" onClick={installApp} aria-label="Install Daily Timetable app">
+                  <span aria-hidden="true">↓</span> Install
+                </button>
+              )}
+              <div className="planner-clock rounded-full border border-violet-500/50 bg-violet-500/10 px-3 py-1 text-xs text-violet-200">
+                {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
             </div>
           </div>
+          {installHelp && !isAppInstalled && <p className="install-app-help planner-install-help" role="status">{installHelp}</p>}
 
           <div className="account-bar">
             <span title={user.email}>{user.email}</span>
@@ -653,8 +712,8 @@ export default function App() {
                     : 'Enable account reminders'}
           </button>
 
-          <form onSubmit={createActivity} className="activity-form space-y-4 rounded-2xl border border-white/10 bg-slate-900/80 p-4 shadow-glow">
-            <div>
+          <form onSubmit={createActivity} className="activity-form rounded-2xl border border-white/10 bg-slate-900/80 p-4 shadow-glow">
+            <div className="activity-title-field">
               <label className="mb-2 block text-sm text-slate-300">Activity title</label>
               <input
                 value={title}
@@ -664,7 +723,7 @@ export default function App() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="activity-time-fields">
               <div>
                 <label className="mb-2 block text-sm text-slate-300">Start</label>
                 <input
