@@ -82,9 +82,6 @@ const isLocalApiUrl = /^https?:\/\/(localhost|127(?:\.\d{1,3}){3}|\[::1\])(?::\d
 const API_BASE_URL = import.meta.env.DEV || isLocalApiUrl ? '' : configuredApiUrl;
 
 function getApiUrl(path) {
-  if (!import.meta.env.DEV && !API_BASE_URL) {
-    throw new Error('The API is not configured for this deployment. Set VITE_API_URL to your HTTPS API URL and rebuild the app.');
-  }
   return `${API_BASE_URL}${path}`;
 }
 

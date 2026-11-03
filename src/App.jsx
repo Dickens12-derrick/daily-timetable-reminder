@@ -48,7 +48,11 @@ function formatSelectedDate(dateString) {
 }
 
 function timeToMinutes(time) {
-  const [hours, minutes] = time.split(':').map(Number);
+  if (typeof time === 'number') return Math.max(0, time);
+  const normalized = String(time ?? '').trim();
+  if (!normalized) return 0;
+  if (/^\d+$/.test(normalized)) return Number(normalized);
+  const [hours, minutes] = normalized.split(':').map(Number);
   return hours * 60 + minutes;
 }
 
@@ -594,9 +598,9 @@ export default function App() {
     event.preventDefault();
     if (!title.trim() || isSaving) return;
 
-    const start = timeToMinutes(startTime);
-    const end = timeToMinutes(endTime);
-    if (end <= start) {
+    const startMinutes = timeToMinutes(startTime);
+    const endMinutes = timeToMinutes(endTime);
+    if (endMinutes <= startMinutes) {
       setToast({ title: 'Invalid time range', text: 'End time must be later than start time.' });
       return;
     }

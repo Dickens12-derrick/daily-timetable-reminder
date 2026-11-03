@@ -3,8 +3,9 @@ services:
     name: daily-timetable-api
     runtime: node
     plan: 0.5c-512mb
-    buildCommand: npm install && npx prisma generate
+    buildCommand: npm install && npx prisma generate && npm run build
     startCommand: npx prisma migrate deploy && node server.js
+    healthCheckPath: /healthz
     disk:
       name: activity-data
       mountPath: /var/data
@@ -12,9 +13,11 @@ services:
     envVars:
       - key: DATABASE_URL
         value: file:/var/data/prod.db
-      - key: CLIENT_ORIGIN
-        sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
         sync: false

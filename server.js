@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import cors from 'cors';
 import express from 'express';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { PrismaClient } from '@prisma/client';
 import { createClient } from '@supabase/supabase-js';
 import webPush from 'web-push';
@@ -8,6 +10,8 @@ import webPush from 'web-push';
 const app = express();
 const prisma = new PrismaClient();
 const port = Number(process.env.PORT) || 5000;
+const appDirectory = path.dirname(fileURLToPath(import.meta.url));
+const frontendDirectory = path.join(appDirectory, 'dist');
 const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -35,9 +39,29 @@ app.use(cors({
   },
 }));
 app.use(express.json());
+app.get('/healthz', (_req, res) => res.status(200).json({ status: 'ok' }));
 
 function isValidDate(value) {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function normalizeTimeValue(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const totalMinutes = Math.max(0, Math.round(value));
+    const hours = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
+    const minutes = String(totalMinutes % 60).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (/^\d+$/.test(trimmed)) {
+      return normalizeTimeValue(Number(trimmed));
+    }
+    return trimmed;
+  }
+
+  return value;
 }
 
 async function requireAuth(req, res, next) {
@@ -168,7 +192,9 @@ app.get('/api/activities', async (req, res) => {
 });
 
 app.post('/api/activities', async (req, res) => {
-  const { title, startTime, endTime } = req.body ?? {};
+  const { title, startTime: rawStartTime, endTime: rawEndTime } = req.body ?? {};
+  const startTime = normalizeTimeValue(rawStartTime);
+  const endTime = normalizeTimeValue(rawEndTime);
   const date = req.body?.date || new Date().toISOString().slice(0, 10);
 
   if (![title, startTime, endTime].every((value) => typeof value === 'string' && value.trim())) {
@@ -180,7 +206,7 @@ app.post('/api/activities', async (req, res) => {
 
   try {
     const activity = await prisma.activity.create({
-      data: { userId: req.user.id, title: title.trim(), startTime: startTime.trim(), endTime: endTime.trim(), date },
+      data: { userId: req.user.id, title: String(title).trim(), startTime: startTime.trim(), endTime: endTime.trim(), date },
     });
     return res.status(201).json(activity);
   } catch (error) {
@@ -269,8 +295,16 @@ app.delete('/api/notifications/subscriptions', async (req, res) => {
   }
 });
 
+app.use(express.static(frontendDirectory));
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) return next();
+  return res.sendFile(path.join(frontendDirectory, 'index.html'), (error) => {
+    if (error) next(error);
+  });
+});
+
 const server = app.listen(port, () => {
-  console.log(`API server listening on http://localhost:${port}`);
+  console.log(`Application server listening on port ${port}`);
   if (pushConfigured) {
     dispatchDueNotifications();
     setInterval(dispatchDueNotifications, 15000);
