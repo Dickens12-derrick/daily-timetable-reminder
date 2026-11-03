@@ -252,6 +252,8 @@ export default function App() {
   ));
   const [pushEnabled, setPushEnabled] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [alarmSoundEnabled, setAlarmSoundEnabled] = useState(false);
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [activeTab, setActiveTab] = useState('today');
@@ -265,12 +267,23 @@ export default function App() {
   ));
   const [now, setNow] = useState(new Date());
   const notifiedRef = useRef(new Set());
+  const audioContextRef = useRef(null);
 
   useEffect(() => {
     localStorage.setItem('planner-theme', theme);
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    const updateOnlineStatus = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    return () => {
+      window.removeEventListener('online', updateOnlineStatus);
+      window.removeEventListener('offline', updateOnlineStatus);
+    };
+  }, []);
 
   useEffect(() => {
     if (!supabase) {
@@ -316,7 +329,7 @@ export default function App() {
         if (active) setHistoryLoading(false);
       });
     return () => { active = false; };
-  }, [authReady, user?.id]);
+  }, [authReady, isOnline, user?.id]);
 
   useEffect(() => {
     if (!authReady || !user) {
@@ -339,7 +352,7 @@ export default function App() {
         if (active) setIsLoading(false);
       });
     return () => { active = false; };
-  }, [authReady, selectedDate, user?.id]);
+  }, [authReady, isOnline, selectedDate, user?.id]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
@@ -386,54 +399,86 @@ export default function App() {
       : 'Open your browser menu and choose Install app or Add to Home Screen.');
   };
 
+  const playAlarmTone = () => {
+    const context = audioContextRef.current;
+    if (!context || context.state !== 'running') return;
+
+    const startAt = context.currentTime;
+    [0, 0.32, 0.64].forEach((offset) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 880;
+      gain.gain.setValueAtTime(0.0001, startAt + offset);
+      gain.gain.exponentialRampToValueAtTime(0.2, startAt + offset + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startAt + offset + 0.23);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(startAt + offset);
+      oscillator.stop(startAt + offset + 0.24);
+    });
+  };
+
+  const enableAlarmSound = async () => {
+    const AudioCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtor) {
+      setApiError('Alarm sound is not supported by this browser.');
+      return;
+    }
+
+    try {
+      const context = audioContextRef.current || new AudioCtor();
+      audioContextRef.current = context;
+      await context.resume();
+      setAlarmSoundEnabled(true);
+      playAlarmTone();
+      setApiError('');
+    } catch (error) {
+      setApiError(`Unable to enable alarm sound: ${error.message}`);
+    }
+  };
+
   useEffect(() => {
-    if (!user || selectedDate !== getLocalDateString()) return undefined;
+    if (!user) return undefined;
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
     const key = `${now.getHours()}:${now.getMinutes()}`;
+    const today = getLocalDateString(now);
 
-    const triggered = activities.filter((activity) => {
+    const triggered = allActivities.filter((activity) => {
       const start = timeToMinutes(activity.startTime);
-      return currentMinutes === start && !notifiedRef.current.has(`${activity.id}-${key}`);
+      const reminderKey = `${user.id}-${activity.id}-${activity.date}-${key}`;
+      if (activity.date !== today || currentMinutes !== start || notifiedRef.current.has(reminderKey)) return false;
+      try {
+        if (localStorage.getItem(`timetable-reminded:${reminderKey}`)) {
+          notifiedRef.current.add(reminderKey);
+          return false;
+        }
+        localStorage.setItem(`timetable-reminded:${reminderKey}`, '1');
+      } catch (error) {
+        console.error('Unable to persist reminder state:', error);
+      }
+      notifiedRef.current.add(reminderKey);
+      return true;
     });
 
     triggered.forEach((activity) => {
-      notifiedRef.current.add(`${activity.id}-${key}`);
       setToast({ title: activity.title, text: `${activity.startTime} - ${activity.endTime}` });
 
       if ('Notification' in window && window.Notification.permission === 'granted') {
-        try {
-          new window.Notification('Activity Reminder', {
+        navigator.serviceWorker.ready
+          .then((registration) => registration.showNotification('Activity Reminder', {
             body: `It's time for: ${activity.title}`,
-            icon: '/icon.svg',
+            icon: '/icon-192.png',
+            badge: '/icon-192.png',
             tag: `activity-${activity.id}`,
+            vibrate: [200, 100, 200],
+          }))
+          .catch((error) => {
+            console.error('Unable to show activity notification:', error);
           });
-        } catch (error) {
-          console.error('Unable to show activity notification:', error);
-        }
       }
 
-      try {
-        const AudioCtor = window.AudioContext || window.webkitAudioContext;
-        if (AudioCtor) {
-          const ctx = new AudioCtor();
-          const oscillator = ctx.createOscillator();
-          const gainNode = ctx.createGain();
-
-          oscillator.type = 'sine';
-          oscillator.frequency.value = 820;
-          gainNode.gain.value = 0.0001;
-
-          oscillator.connect(gainNode);
-          gainNode.connect(ctx.destination);
-
-          oscillator.start();
-          gainNode.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.05);
-          gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.45);
-          oscillator.stop(ctx.currentTime + 0.5);
-        }
-      } catch {
-        // Ignore audio errors in unsupported browsers.
-      }
+      if (alarmSoundEnabled) playAlarmTone();
     });
 
     if (triggered.length > 0) {
@@ -445,7 +490,7 @@ export default function App() {
       const timer = setTimeout(() => setToast(null), TOAST_TIMEOUT);
       return () => clearTimeout(timer);
     }
-  }, [activities, now, selectedDate, toast, user]);
+  }, [alarmSoundEnabled, allActivities, now, toast, user]);
 
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
@@ -570,7 +615,12 @@ export default function App() {
       setTitle('');
       setStartTime('09:00');
       setEndTime('10:00');
-      setToast({ title: 'Activity added', text: `${nextItem.title} was saved to your timetable.` });
+      setToast({
+        title: nextItem.id.startsWith('local-') ? 'Saved offline' : 'Activity added',
+        text: nextItem.id.startsWith('local-')
+          ? `${nextItem.title} is saved on this device and will sync when online.`
+          : `${nextItem.title} was saved to your timetable.`,
+      });
     } catch (error) {
       setApiError(error.message);
     } finally {
@@ -661,6 +711,9 @@ export default function App() {
               <button type="button" onClick={signOut}>Sign out</button>
             </div>
           </div>
+          <p className="mb-4 text-xs text-slate-400" role="status">
+            {isOnline ? 'Online · activity history syncs to your account' : 'Offline · saved activities and history are available on this device'}
+          </p>
 
           <div className="calendar-controls mb-5 flex items-center gap-2">
             <button
@@ -711,6 +764,16 @@ export default function App() {
                     ? 'Finish enabling push reminders'
                     : 'Enable account reminders'}
           </button>
+          <button
+            type="button"
+            onClick={alarmSoundEnabled ? () => setAlarmSoundEnabled(false) : enableAlarmSound}
+            className="mb-2 w-full rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100 transition hover:bg-emerald-500/20"
+          >
+            {alarmSoundEnabled ? 'Alarm tone enabled on this device' : 'Enable alarm tone'}
+          </button>
+          <p className="mb-5 text-xs text-slate-400">
+            Offline alarms work while the app is open. Online push reminders can arrive while it is closed.
+          </p>
 
           <form onSubmit={createActivity} className="activity-form rounded-2xl border border-white/10 bg-slate-900/80 p-4 shadow-glow">
             <div className="activity-title-field">

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'daily-timetable-cache-v2';
+const CACHE_NAME = 'daily-timetable-cache-v3';
 const APP_SHELL = ['./', '/index.html', '/manifest.json', '/icon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -22,6 +22,7 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
+  if (requestUrl.pathname.startsWith('/api/')) return;
 
   event.respondWith(
     fetch(event.request)

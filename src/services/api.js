@@ -1,4 +1,9 @@
 import { supabase } from './supabase';
+export {
+  createActivity,
+  deleteActivity,
+  getActivities,
+} from './offlineActivities';
 
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim().replace(/\/+$/, '') || '';
 const isLocalApiUrl = /^https?:\/\/(localhost|127(?:\.\d{1,3}){3}|\[::1\])(?::\d+)?$/i.test(configuredApiUrl);
@@ -34,26 +39,11 @@ async function request(path, options = {}) {
   return payload;
 }
 
-export function getActivities(date) {
-  return request(`/api/activities?date=${encodeURIComponent(date)}`);
-}
-
-export function createActivity(activity) {
-  return request('/api/activities', {
-    method: 'POST',
-    body: JSON.stringify(activity),
-  });
-}
-
 export function updateActivity(id, updates) {
   return request(`/api/activities/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify(updates),
   });
-}
-
-export function deleteActivity(id) {
-  return request(`/api/activities/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
 export async function getVapidPublicKey() {

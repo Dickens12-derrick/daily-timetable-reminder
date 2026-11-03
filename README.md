@@ -8,8 +8,10 @@ A mobile-first calendar/reminder app built with React + Vite + Tailwind CSS.
 - Add, view, and remove timetable items
 - Browse schedules by date with previous/next-day navigation and a calendar picker
 - Persistent activity storage with Prisma and local SQLite
+- Per-account device cache for the schedule and completed-activity history, with offline create/delete queued for sync
 - Express REST API with date filtering and activity updates
-- Visual toast, browser notification, and subtle audio reminders at the exact start time
+- In-app alarm tone, visual toast, and browser notification at an activity's start time
+- Online push reminders that can arrive while the installed app is closed
 - Responsive desktop split layout
 - PWA manifest and service worker setup for installability
 
@@ -44,6 +46,8 @@ npm run dev:frontend
 The frontend is available at `http://localhost:5175`; the API listens on `http://localhost:5000`. Keep both processes running while using the app. To test from a phone on the same Wi-Fi, open the Network URL printed by Vite. Local `/api` requests are proxied to the API, so the browser does not need a `VITE_API_URL` pointing to its own `localhost`. Create an account or sign in with Supabase. Each activity is stored under the verified account. Enable reminders in the app and allow browser notifications to associate that device's push subscription with the signed-in user.
 
 The API process must stay running to dispatch scheduled push notifications. For deployment, use an always-on Node service for this API, configure the same environment variables there, and set `CLIENT_ORIGIN` to the exact HTTPS frontend origin. Set `VITE_API_URL` to the HTTPS API URL when building the frontend. HTTPS is required for installable PWA and push notifications on real devices.
+
+The app caches each signed-in user's activity schedule on that device and queues activity additions/removals made offline for synchronization after reconnection. Offline edits are local to the device until the API is reachable; data from other devices cannot be fetched while offline. Tap **Enable alarm tone** once while the app is open to authorize audio playback. In-app offline alarms and notifications require the installed app to remain open; mobile operating systems suspend web apps in the background. For alerts while the app is closed, allow notifications, enable account reminders, and keep the API service and internet connection available. On iPhone, notification and background behavior also depends on the installed home-screen web app and iOS settings.
 
 ## API
 
