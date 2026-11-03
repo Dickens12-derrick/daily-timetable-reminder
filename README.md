@@ -28,14 +28,17 @@ npm install
 npm run db:migrate
 ```
 
-Start the API and frontend in separate terminals:
-
-```bash
-npm run server
-```
+Start both the API and frontend together:
 
 ```bash
 npm run dev
+```
+
+Or run them separately if you want to manage each process yourself:
+
+```bash
+npm run dev:api
+npm run dev:frontend
 ```
 
 The frontend is available at `http://localhost:5175`; the API listens on `http://localhost:5000`. Keep both processes running while using the app. To test from a phone on the same Wi-Fi, open the Network URL printed by Vite. Local `/api` requests are proxied to the API, so the browser does not need a `VITE_API_URL` pointing to its own `localhost`. Create an account or sign in with Supabase. Each activity is stored under the verified account. Enable reminders in the app and allow browser notifications to associate that device's push subscription with the signed-in user.
