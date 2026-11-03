@@ -4,7 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 5175",
+    "dev": "concurrently \"npm run server\" \"vite --host 0.0.0.0 --port 5175\"",
+    "dev:frontend": "vite --host 0.0.0.0 --port 5175",
+    "dev:api": "node server.js",
     "server": "node server.js",
     "db:migrate": "prisma migrate dev --name init",
     "db:generate": "prisma generate",
@@ -28,6 +30,7 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^10.0.6",
     "postcss": "^8.4.49",
     "prisma": "^6.19.0",
     "tailwindcss": "^3.4.15",
