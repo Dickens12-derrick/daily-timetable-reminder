@@ -3,7 +3,9 @@ const APP_SHELL = ['./', '/index.html', '/manifest.json', '/icon.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll([...APP_SHELL, '/icon-192.png', '/icon-512.png', '/icon-maskable.png', '/apple-touch-icon.png']))
+      .then(() => self.skipWaiting())
   );
 });
 
