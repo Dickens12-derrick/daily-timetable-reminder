@@ -44,6 +44,9 @@ button {
   color: #17231d !important;
   position: relative;
   isolation: isolate;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .scene-backdrop {

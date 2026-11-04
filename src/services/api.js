@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { readApiResponse } from './apiResponse';
 export {
   createActivity,
   deleteActivity,
@@ -27,13 +28,7 @@ async function request(path, options = {}) {
     },
   });
 
-  if (response.status === 204) return null;
-
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.error || `Request failed (${response.status}).`);
-  }
-  return payload;
+  return readApiResponse(response);
 }
 
 export function updateActivity(id, updates) {
@@ -45,8 +40,7 @@ export function updateActivity(id, updates) {
 
 export async function getVapidPublicKey() {
   const response = await fetch(getApiUrl('/api/notifications/vapid-public-key'));
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.error || 'Unable to load push notification settings.');
+  const payload = await readApiResponse(response, 'Unable to load push notification settings');
   return payload.publicKey;
 }
 

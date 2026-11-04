@@ -43,7 +43,9 @@ npm run dev:api
 npm run dev:frontend
 ```
 
-The frontend is available at `http://localhost:5175`; the API listens on `http://localhost:5000`. Keep both processes running while using the app. To test from a phone on the same Wi-Fi, open the Network URL printed by Vite. Local `/api` requests are proxied to the API, so the browser does not need a `VITE_API_URL` pointing to its own `localhost`. Create an account or sign in with Supabase. Each activity is stored under the verified account. Enable reminders in the app and allow browser notifications to associate that device's push subscription with the signed-in user.
+The frontend is available at `http://localhost:5175`; the API listens on `http://localhost:5000`. Keep both processes running while using the app. To test from a phone on the same Wi-Fi, open the Network URL printed by Vite. Local `/api` requests are proxied to the API, so the browser does not need a `VITE_API_URL` pointing to its own `localhost`. The production preview on port `4173` uses the same proxy and also requires the API to be running. Create an account or sign in with Supabase. Each activity is stored under the verified account. Enable reminders in the app and allow browser notifications to associate that device's push subscription with the signed-in user.
+
+If you opened the workspace's parent folder, its root scripts forward `npm run setup`, `npm run db:migrate`, `npm run dev`, and `npm run build` to this application directory.
 
 ## Deploy one link for computers and phones
 
@@ -51,7 +53,7 @@ The included `render.yaml` deploys the frontend and API together as one always-o
 
 After deployment, open the Render HTTPS URL on a computer or phone and sign in to the same account. On Android, use the browser menu and choose **Install app** or **Add to Home screen**. On iPhone, open the link in Safari, tap **Share**, then **Add to Home Screen**. This installs the PWA from the shared link; it does not produce a separate APK or App Store download. Push notifications require HTTPS and the optional VAPID keys described above.
 
-For split deployments (for example, a static Vercel frontend and a separate API), set `VITE_API_URL` to the HTTPS API origin when building the frontend and set `CLIENT_ORIGIN` on the API to the exact frontend origin.
+For split deployments (for example, a static Vercel frontend and a separate API), set `VITE_API_URL` to the HTTPS API origin in the frontend's build environment and set `CLIENT_ORIGIN` on the API to the exact frontend origin. Rebuild and redeploy the frontend after setting or changing `VITE_API_URL`; it is embedded at build time. A static frontend without a reachable API returns 404 for `/api` routes.
 
 The app caches each signed-in user's activity schedule on that device and queues activity additions/removals made offline for synchronization after reconnection. Offline edits are local to the device until the API is reachable; data from other devices cannot be fetched while offline. Tap **Enable alarm tone** once while the app is open to authorize audio playback. In-app offline alarms and notifications require the installed app to remain open; mobile operating systems suspend web apps in the background. For alerts while the app is closed, allow notifications, enable account reminders, and keep the API service and internet connection available. On iPhone, notification and background behavior also depends on the installed home-screen web app and iOS settings.
 

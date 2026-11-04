@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { readApiResponse } from './apiResponse';
 
 const STORAGE_PREFIX = 'daily-timetable';
 const syncByUser = new Map();
@@ -71,10 +72,7 @@ async function apiRequest(session, path, options = {}) {
       ...options.headers,
     },
   });
-  if (response.status === 204) return null;
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.error || `Request failed (${response.status}).`);
-  return payload;
+  return readApiResponse(response);
 }
 
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim().replace(/\/+$/, '') || '';
