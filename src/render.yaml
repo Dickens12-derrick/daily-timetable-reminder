@@ -1,0 +1,37 @@
+# Exported from Render on 2026-11-06T05:31:21Z
+version: "1"
+projects:
+- name: My project
+  environments:
+  - name: Production
+    services:
+    - type: web
+      name: daily-timetable-reminder
+      runtime: static
+      repo: https://github.com/Dickens12-derrick/daily-timetable-reminder
+      envVars:
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: PORT
+        sync: false
+      - key: VITE_API_URL
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      buildCommand: npm install; npm run build
+      staticPublishPath: dist
+      autoDeployTrigger: commit
