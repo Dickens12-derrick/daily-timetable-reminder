@@ -135,7 +135,7 @@ function AuthenticationScreen({ theme, onThemeChange, isPasswordRecovery, onPass
         <section className="auth-panel">
           <p className="auth-eyebrow">Daily plan</p>
           <h1>Connect your account service</h1>
-          <p>Set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> in your local environment, then restart Vite.</p>
+          <p>Set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_PUBLISHABLE_KEY</code> (or <code>VITE_SUPABASE_ANON_KEY</code>) in your local environment, then restart Vite.</p>
           <p className="auth-note">The API also needs <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> in its environment.</p>
         </section>
       </main>

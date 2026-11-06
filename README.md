@@ -17,7 +17,7 @@ A mobile-first calendar/reminder app built with React + Vite + Tailwind CSS.
 
 ## Authentication and push setup
 
-Create a Supabase project and enable Email authentication. Copy the project URL and anon/public key into both `SUPABASE_URL` / `SUPABASE_ANON_KEY` and `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in `.env`. Never use the Supabase service-role key in the frontend.
+Create a Supabase project and enable Email authentication. Copy the project URL and anon/publishable key into `SUPABASE_URL` / `SUPABASE_ANON_KEY` and `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` in `.env`. Never use the Supabase service-role key in the frontend.
 
 Generate Web Push keys with `npx web-push generate-vapid-keys`. Put the public/private pair and a contact email in `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT`. Keep the private key only on the API server.
 
@@ -49,7 +49,9 @@ If you opened the workspace's parent folder, its root scripts forward `npm run s
 
 ## Deploy one link for computers and phones
 
-The included `render.yaml` deploys the frontend and API together as one always-on Node service. This gives desktop browsers and phones the same HTTPS link, same-origin API requests, and shared account-backed activity storage. In Render, create a Blueprint from this repository and provide `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY` when prompted. The frontend Supabase URL and publishable key must belong to the same project as the API credentials. Keep the generated `DATABASE_URL` and persistent disk configuration from the Blueprint. The frontend uses `/api` on the same host by default, so do not set `VITE_API_URL` for this combined deployment.
+The repository-root `render.yaml` deploys the frontend and API together as one always-on Node service. This gives desktop browsers and phones the same HTTPS link, same-origin API requests, and shared account-backed activity storage. In Render, create a Blueprint from this repository using its root `render.yaml`—do not deploy it as a Static Site. Provide `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY` when prompted. The frontend Supabase URL and publishable key must belong to the same project as the API credentials. Keep the generated `DATABASE_URL` and persistent disk configuration from the Blueprint. The frontend uses `/api` on the same host by default, so leave `VITE_API_URL` unset for this combined deployment. After deploy, confirm the service is healthy at `/healthz`, which should return `{"status":"ok"}`.
+
+The Blueprint uses SQLite on a persistent disk, which may require a paid Render plan. If you do not want to pay for persistent storage, do not deploy this Blueprint as-is: a free static frontend cannot run the API or persist activities. Host the API and durable database separately, set `VITE_API_URL` to the API's HTTPS origin when building the frontend, and set `CLIENT_ORIGIN` on the API to the frontend's exact origin.
 
 After deployment, open the Render HTTPS URL on a computer or phone and sign in to the same account. On Android, use the browser menu and choose **Install app** or **Add to Home screen**. On iPhone, open the link in Safari, tap **Share**, then **Add to Home Screen**. This installs the PWA from the shared link; it does not produce a separate APK or App Store download. Push notifications require HTTPS and the optional VAPID keys described above.
 
