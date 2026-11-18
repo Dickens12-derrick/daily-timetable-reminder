@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import * as THREE from 'three';
 
 export default function PlannerScene({ theme }) {
   const hostRef = useRef(null);
@@ -11,7 +12,6 @@ export default function PlannerScene({ theme }) {
     let cleanupScene;
 
     async function initializeScene() {
-      const THREE = await import('three');
       if (cancelled || !hostRef.current) return;
 
       let renderer;

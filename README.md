@@ -1,85 +1,37 @@
 # Daily Timetable & Reminder
 
-A mobile-first calendar/reminder app built with React + Vite + Tailwind CSS.
+A mobile-friendly daily planner that works offline. Activities are saved in the browser's local storage; the planner does not require an account or send activity data to the server.
 
 ## Features
 
-- Responsive daily planner dashboard
-- Add, view, and remove timetable items
-- Browse schedules by date with previous/next-day navigation and a calendar picker
-- Persistent activity storage with Prisma and local SQLite
-- Per-account device cache for the schedule and completed-activity history, with offline create/delete queued for sync
-- Express REST API with date filtering and activity updates
-- In-app alarm tone, visual toast, and browser notification at an activity's start time
-- Online push reminders that can arrive while the installed app is closed
-- Responsive desktop split layout
-- PWA manifest and service worker setup for installability
-
-## Authentication and push setup
-
-Create a Supabase project and enable Email authentication. Copy the project URL and anon/publishable key into `SUPABASE_URL` / `SUPABASE_ANON_KEY` and `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` in `.env`. Never use the Supabase service-role key in the frontend.
-
-Generate Web Push keys with `npx web-push generate-vapid-keys`. Put the public/private pair and a contact email in `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT`. Keep the private key only on the API server.
+- Add, view, remove, and browse activities by date
+- Offline-first activity storage on this device
+- In-app activity reminders, loud alarm tone, and optional browser notifications
+- Installable PWA with cached app shell for offline use
+- Activity history and weekly insights
 
 ## Run locally
 
-Copy `.env.example` to `.env`, configure the values above, then install dependencies and apply database migrations:
-
 ```bash
 npm install
-npm run db:migrate
-```
-
-Start both the API and frontend together:
-
-```bash
-npm run dev
-```
-
-Or run them separately if you want to manage each process yourself:
-
-```bash
-npm run dev:api
 npm run dev:frontend
 ```
 
-The frontend is available at `http://localhost:5175`; the API listens on `http://localhost:5000`. Keep both processes running while using the app. To test from a phone on the same Wi-Fi, open the Network URL printed by Vite. Local `/api` requests are proxied to the API, so the browser does not need a `VITE_API_URL` pointing to its own `localhost`. The production preview on port `4173` uses the same proxy and also requires the API to be running. Create an account or sign in with Supabase. Each activity is stored under the verified account. Enable reminders in the app and allow browser notifications to associate that device's push subscription with the signed-in user.
+Open `http://localhost:5175`. No Supabase credentials, database setup, or API server are needed for the planner. For offline use after first load, open the app once while online so its service worker can cache the app files. Browser storage is device- and browser-specific; clearing site data removes locally saved activities.
 
-If you opened the workspace's parent folder, its root scripts forward `npm run setup`, `npm run db:migrate`, `npm run dev`, and `npm run build` to this application directory.
+For the API server's database health endpoint and standalone legacy routes, run `npm run dev:api` separately. The planner UI does not call those routes. The legacy activity and push API still uses Supabase authentication and is not part of the device-only app flow.
 
-## Deploy one link for computers and phones
+## Alarms and notifications
 
-The repository-root `render.yaml` deploys the frontend and API together as one always-on Node service. This gives desktop browsers and phones the same HTTPS link, same-origin API requests, and shared account-backed activity storage. In Render, create a Blueprint from this repository using its root `render.yaml`—do not deploy it as a Static Site. Provide `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY` when prompted. The frontend Supabase URL and publishable key must belong to the same project as the API credentials. Keep the generated `DATABASE_URL` and persistent disk configuration from the Blueprint. The frontend uses `/api` on the same host by default, so leave `VITE_API_URL` unset for this combined deployment. After deploy, confirm the service is healthy at `/healthz`, which should return `{"status":"ok"}`.
+Choose **Enable loud alarm** once during each browser session to authorize audio playback. The sound plays a loud sequence when a scheduled activity starts, as long as the app is open. Browser notifications are optional and also require the app to be open. Browsers and mobile operating systems may suspend background web apps, so this local-only mode cannot guarantee alarms while the app is closed.
 
-The Blueprint uses SQLite on a persistent disk, which may require a paid Render plan. If you do not want to pay for persistent storage, do not deploy this Blueprint as-is: a free static frontend cannot run the API or persist activities. Host the API and durable database separately, set `VITE_API_URL` to the API's HTTPS origin when building the frontend, and set `CLIENT_ORIGIN` on the API to the frontend's exact origin.
-
-After deployment, open the Render HTTPS URL on a computer or phone and sign in to the same account. On Android, use the browser menu and choose **Install app** or **Add to Home screen**. On iPhone, open the link in Safari, tap **Share**, then **Add to Home Screen**. This installs the PWA from the shared link; it does not produce a separate APK or App Store download. Push notifications require HTTPS and the optional VAPID keys described above.
-
-For split deployments (for example, a static Vercel frontend and a separate API), set `VITE_API_URL` to the HTTPS API origin in the frontend's build environment and set `CLIENT_ORIGIN` on the API to the exact frontend origin. Rebuild and redeploy the frontend after setting or changing `VITE_API_URL`; it is embedded at build time. A static frontend without a reachable API returns 404 for `/api` routes.
-
-The app caches each signed-in user's activity schedule on that device and queues activity additions/removals made offline for synchronization after reconnection. Offline edits are local to the device until the API is reachable; data from other devices cannot be fetched while offline. Tap **Enable alarm tone** once while the app is open to authorize audio playback. In-app offline alarms and notifications require the installed app to remain open; mobile operating systems suspend web apps in the background. For alerts while the app is closed, allow notifications, enable account reminders, and keep the API service and internet connection available. On iPhone, notification and background behavior also depends on the installed home-screen web app and iOS settings.
-
-## API
-
-- `GET /api/activities?date=YYYY-MM-DD` returns activities for that day. Omitting `date` returns all activities for the signed-in user.
-- `POST /api/activities` creates an activity with `title`, `startTime`, `endTime`, and optional `date`.
-- `PATCH /api/activities/:id` updates any provided activity fields.
-- `DELETE /api/activities/:id` removes an activity.
-- All activity and push-subscription routes require a Supabase access token; the API restricts records to its verified user.
-- `GET /api/notifications/vapid-public-key` returns the public key for browser push subscriptions.
-- `POST` and `DELETE /api/notifications/subscriptions` register or remove a signed-in user's device.
-
-Set `VITE_API_URL` to use a different API origin and `CLIENT_ORIGIN` to configure allowed frontend origins.
-
-## Production build
+## Build
 
 ```bash
 npm run build
 npm run preview
 ```
 
-## PWA notes
+## API health
 
-- `public/manifest.json` defines app metadata for install on iPhone/Android.
-- `public/sw.js` caches the app shell and displays push notifications.
-- Push reminders are sent by the continuously running API at the scheduled local time for each registered device.
+`GET /healthz` returns `{"status":"ok"}` when the API can reach its configured database, or HTTP `503` with `{"status":"unavailable"}` when it cannot. API failures return JSON error responses.

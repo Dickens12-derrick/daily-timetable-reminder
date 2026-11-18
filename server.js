@@ -39,7 +39,15 @@ app.use(cors({
   },
 }));
 app.use(express.json());
-app.get('/healthz', (_req, res) => res.status(200).json({ status: 'ok' }));
+app.get('/healthz', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return res.status(200).json({ status: 'ok' });
+  } catch (error) {
+    console.error('API health check failed:', error);
+    return res.status(503).json({ status: 'unavailable' });
+  }
+});
 
 function isValidDate(value) {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -293,6 +301,16 @@ app.delete('/api/notifications/subscriptions', async (req, res) => {
     console.error('Failed to remove push subscription:', error);
     return res.status(500).json({ error: 'Unable to disable push notifications.' });
   }
+});
+
+app.use((error, _req, res, _next) => {
+  console.error('API request failed:', error);
+  const status = Number.isInteger(error.status) && error.status >= 400 && error.status < 600
+    ? error.status
+    : 500;
+  return res.status(status).json({
+    error: status === 400 ? 'Request body must be valid JSON.' : 'The API could not complete the request.',
+  });
 });
 
 app.use(express.static(frontendDirectory));

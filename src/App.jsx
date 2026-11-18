@@ -15,11 +15,7 @@ import {
   createActivity as createActivityRequest,
   deleteActivity as deleteActivityRequest,
   getActivities,
-  getVapidPublicKey,
-  removePushSubscription,
-  savePushSubscription,
 } from './services/api';
-import { isSupabaseConfigured, supabase } from './services/supabase';
 import PlannerScene from './components/PlannerScene';
 
 const TOAST_TIMEOUT = 4200;
@@ -75,170 +71,6 @@ function formatActivityDate(dateString) {
   });
 }
 
-function encodeApplicationServerKey(key) {
-  const padding = '='.repeat((4 - (key.length % 4)) % 4);
-  const base64 = `${key}${padding}`.replace(/-/g, '+').replace(/_/g, '/');
-  return Uint8Array.from(window.atob(base64), (character) => character.charCodeAt(0));
-}
-
-function AuthenticationScreen({ theme, onThemeChange, isPasswordRecovery, onPasswordRecoveryComplete, onInstallApp, isAppInstalled, installHelp }) {
-  const [mode, setMode] = useState('sign-in');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [passwordConfirmation, setPasswordConfirmation] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const submit = async (event) => {
-    event.preventDefault();
-    setError('');
-    setMessage('');
-    setIsSubmitting(true);
-    try {
-      if (isPasswordRecovery) {
-        if (password !== passwordConfirmation) throw new Error('The passwords do not match.');
-        const { error: updateError } = await supabase.auth.updateUser({ password });
-        if (updateError) throw updateError;
-        setMessage('Your password has been updated.');
-        onPasswordRecoveryComplete();
-        return;
-      }
-
-      if (mode === 'reset') {
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/?password-reset=1`,
-        });
-        if (resetError) throw resetError;
-        setMessage('If an account exists for that email, a password reset link is on its way.');
-        return;
-      }
-
-      const result = mode === 'sign-in'
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password });
-      if (result.error) throw result.error;
-      if (mode === 'sign-up' && !result.data.session) {
-        setMessage('Check your email to confirm your account, then sign in.');
-      }
-    } catch (requestError) {
-      setError(requestError.message || 'Unable to authenticate.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (!isSupabaseConfigured) {
-    return (
-      <main className="auth-screen">
-        <section className="auth-panel">
-          <p className="auth-eyebrow">Daily plan</p>
-          <h1>Connect your account service</h1>
-          <p>Set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_PUBLISHABLE_KEY</code> (or <code>VITE_SUPABASE_ANON_KEY</code>) in your local environment, then restart Vite.</p>
-          <p className="auth-note">The API also needs <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> in its environment.</p>
-        </section>
-      </main>
-    );
-  }
-
-  return (
-    <main className="auth-screen">
-      <PlannerScene theme={theme} />
-      <button
-        className="auth-theme-toggle"
-        type="button"
-        onClick={onThemeChange}
-        aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
-        title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
-      >
-        {theme === 'light' ? '☾' : '☼'}
-      </button>
-      <section className="auth-panel">
-        <p className="auth-eyebrow">Daily plan</p>
-        {!isAppInstalled && (
-          <div className="install-app-block">
-            <button type="button" className="install-app-button" onClick={onInstallApp}>
-              <span aria-hidden="true">↓</span> Install app
-            </button>
-            {installHelp && <p className="install-app-help" role="status">{installHelp}</p>}
-          </div>
-        )}
-        <h1>{isPasswordRecovery ? 'Choose a new password' : mode === 'reset' ? 'Reset your password' : mode === 'sign-in' ? 'Welcome To Daily Plan' : 'Create your account'}</h1>
-        <p className="auth-description">{isPasswordRecovery ? 'Set a new password for your account.' : 'Your timetable and reminders stay connected to your account.'}</p>
-        <form className="auth-form" onSubmit={submit}>
-          {!isPasswordRecovery && <label htmlFor="auth-email">Email</label>}
-          {!isPasswordRecovery && <input id="auth-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />}
-          {(isPasswordRecovery || mode !== 'reset') && (
-            <>
-              <label htmlFor="auth-password">{isPasswordRecovery ? 'New password' : 'Password'}</label>
-              <div className="password-input-wrap">
-                <input
-                  id="auth-password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
-                  minLength="8"
-                  required
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
-                <button
-                  className="password-visibility-toggle"
-                  type="button"
-                  onClick={() => setShowPassword((visible) => !visible)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  aria-pressed={showPassword}
-                >
-                  {showPassword ? 'Hide' : 'Show'}
-                </button>
-              </div>
-              {isPasswordRecovery && (
-                <>
-                  <label htmlFor="auth-password-confirmation">Confirm new password</label>
-                  <input
-                    id="auth-password-confirmation"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    minLength="8"
-                    required
-                    value={passwordConfirmation}
-                    onChange={(event) => setPasswordConfirmation(event.target.value)}
-                  />
-                </>
-              )}
-            </>
-          )}
-          {error && <p className="auth-error" role="alert">{error}</p>}
-          {message && <p className="auth-message" role="status">{message}</p>}
-          <button className="primary-action" type="submit" disabled={isSubmitting}>
-            {isSubmitting
-              ? 'Please wait...'
-              : isPasswordRecovery
-                ? 'Update password'
-                : mode === 'reset'
-                  ? 'Send reset link'
-                  : mode === 'sign-in'
-                    ? 'Sign in'
-                    : 'Create account'}
-          </button>
-        </form>
-        {!isPasswordRecovery && (
-          <div className="auth-links">
-            {mode === 'sign-in' && (
-              <button className="auth-mode-toggle" type="button" onClick={() => { setMode('reset'); setError(''); setMessage(''); }}>
-                Forgot your password?
-              </button>
-            )}
-            <button className="auth-mode-toggle" type="button" onClick={() => { setMode(mode === 'sign-up' ? 'sign-in' : 'sign-up'); setError(''); setMessage(''); }}>
-              {mode === 'sign-up' ? 'Already have an account? Sign in' : 'New here? Create an account'}
-            </button>
-          </div>
-        )}
-      </section>
-    </main>
-  );
-}
-
 export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('planner-theme') || 'light');
   const [activities, setActivities] = useState([]);
@@ -254,21 +86,15 @@ export default function App() {
   const [notificationPermission, setNotificationPermission] = useState(() => (
     'Notification' in window ? window.Notification.permission : 'unsupported'
   ));
-  const [pushEnabled, setPushEnabled] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [alarmSoundEnabled, setAlarmSoundEnabled] = useState(false);
-  const [user, setUser] = useState(null);
-  const [authReady, setAuthReady] = useState(false);
   const [activeTab, setActiveTab] = useState('today');
   const [installPrompt, setInstallPrompt] = useState(null);
   const [isAppInstalled, setIsAppInstalled] = useState(() => (
     window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
   ));
   const [installHelp, setInstallHelp] = useState('');
-  const [isPasswordRecovery, setIsPasswordRecovery] = useState(() => (
-    new URLSearchParams(window.location.search).has('password-reset')
-  ));
   const [now, setNow] = useState(new Date());
   const notifiedRef = useRef(new Set());
   const audioContextRef = useRef(null);
@@ -290,73 +116,28 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!supabase) {
-      setAuthReady(true);
-      return undefined;
-    }
-
-    let active = true;
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (active) {
-        setUser(data.session?.user || null);
-        if (error) setApiError(error.message);
-        setAuthReady(true);
-      }
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user || null);
-      setPushEnabled(false);
-      if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
-    });
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!authReady || !user) {
-      setAllActivities([]);
-      return undefined;
-    }
-
     let active = true;
     setHistoryLoading(true);
-    getActivities()
-      .then((items) => {
-        if (active) setAllActivities(items);
-      })
-      .catch((error) => {
-        if (active) setApiError(error.message);
-      })
-      .finally(() => {
-        if (active) setHistoryLoading(false);
-      });
-    return () => { active = false; };
-  }, [authReady, isOnline, user?.id]);
-
-  useEffect(() => {
-    if (!authReady || !user) {
-      setActivities([]);
-      setIsLoading(false);
-      return undefined;
-    }
-
-    let active = true;
     setIsLoading(true);
     setApiError('');
-    getActivities(selectedDate)
-      .then((items) => {
-        if (active) setActivities(sortActivities(items));
+    Promise.all([getActivities(), getActivities(selectedDate)])
+      .then(([allItems, dayItems]) => {
+        if (active) {
+          setAllActivities(allItems);
+          setActivities(sortActivities(dayItems));
+        }
       })
       .catch((error) => {
         if (active) setApiError(error.message);
       })
       .finally(() => {
-        if (active) setIsLoading(false);
+        if (active) {
+          setIsLoading(false);
+          setHistoryLoading(false);
+        }
       });
     return () => { active = false; };
-  }, [authReady, isOnline, selectedDate, user?.id]);
+  }, [selectedDate]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
@@ -365,7 +146,10 @@ export default function App() {
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(() => {});
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch((error) => {
+      console.error('Unable to register the offline app worker:', error);
+      setApiError('Offline app support could not be initialized. Reload while online to try again.');
+    });
   }, []);
 
   useEffect(() => {
@@ -408,13 +192,13 @@ export default function App() {
     if (!context || context.state !== 'running') return;
 
     const startAt = context.currentTime;
-    [0, 0.32, 0.64].forEach((offset) => {
+    Array.from({ length: 16 }, (_, index) => index * 0.48).forEach((offset) => {
       const oscillator = context.createOscillator();
       const gain = context.createGain();
       oscillator.type = 'sine';
       oscillator.frequency.value = 880;
       gain.gain.setValueAtTime(0.0001, startAt + offset);
-      gain.gain.exponentialRampToValueAtTime(0.2, startAt + offset + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.85, startAt + offset + 0.025);
       gain.gain.exponentialRampToValueAtTime(0.0001, startAt + offset + 0.23);
       oscillator.connect(gain);
       gain.connect(context.destination);
@@ -443,14 +227,13 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!user) return undefined;
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
     const key = `${now.getHours()}:${now.getMinutes()}`;
     const today = getLocalDateString(now);
 
     const triggered = allActivities.filter((activity) => {
       const start = timeToMinutes(activity.startTime);
-      const reminderKey = `${user.id}-${activity.id}-${activity.date}-${key}`;
+      const reminderKey = `${activity.id}-${activity.date}-${key}`;
       if (activity.date !== today || currentMinutes !== start || notifiedRef.current.has(reminderKey)) return false;
       try {
         if (localStorage.getItem(`timetable-reminded:${reminderKey}`)) {
@@ -494,7 +277,7 @@ export default function App() {
       const timer = setTimeout(() => setToast(null), TOAST_TIMEOUT);
       return () => clearTimeout(timer);
     }
-  }, [alarmSoundEnabled, allActivities, now, toast, user]);
+  }, [alarmSoundEnabled, allActivities, now, toast]);
 
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
@@ -549,49 +332,20 @@ export default function App() {
     });
   }, [sortedActivities]);
 
-  const finishPasswordRecovery = () => {
-    window.history.replaceState({}, '', window.location.pathname);
-    setIsPasswordRecovery(false);
-  };
-
   const requestNotificationPermission = async () => {
     if (!('Notification' in window)) {
       setNotificationPermission('unsupported');
       return;
     }
-    const permission = await window.Notification.requestPermission();
-    setNotificationPermission(permission);
-    if (permission !== 'granted') return;
-
     try {
-      const registration = await navigator.serviceWorker.ready;
-      const publicKey = await getVapidPublicKey();
-      const subscription = await registration.pushManager.getSubscription()
-        || await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: encodeApplicationServerKey(publicKey),
-        });
-      await savePushSubscription(subscription, Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
-      setPushEnabled(true);
-      setApiError('');
-      setToast({ title: 'Reminders enabled', text: `Push reminders are linked to ${user.email}.` });
-    } catch (error) {
-      setApiError(error.message);
-    }
-  };
-
-  const signOut = async () => {
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      if (subscription) {
-        await removePushSubscription(subscription.endpoint);
-        await subscription.unsubscribe();
+      const permission = await window.Notification.requestPermission();
+      setNotificationPermission(permission);
+      if (permission === 'granted') {
+        setToast({ title: 'Notifications enabled', text: 'This device can show reminders while the app is open.' });
       }
     } catch (error) {
-      setApiError(error.message);
+      setApiError(`Unable to enable notifications: ${error.message}`);
     }
-    await supabase.auth.signOut();
   };
 
   const createActivity = async (event) => {
@@ -620,10 +374,8 @@ export default function App() {
       setStartTime('09:00');
       setEndTime('10:00');
       setToast({
-        title: nextItem.id.startsWith('local-') ? 'Saved offline' : 'Activity added',
-        text: nextItem.id.startsWith('local-')
-          ? `${nextItem.title} is saved on this device and will sync when online.`
-          : `${nextItem.title} was saved to your timetable.`,
+        title: 'Saved on this device',
+        text: `${nextItem.title} was saved to your local timetable.`,
       });
     } catch (error) {
       setApiError(error.message);
@@ -642,36 +394,6 @@ export default function App() {
       setApiError(error.message);
     }
   };
-
-  useEffect(() => {
-    if (!user || notificationPermission !== 'granted') return;
-    let active = true;
-    navigator.serviceWorker?.ready
-      .then(async (registration) => {
-        const subscription = await registration.pushManager.getSubscription();
-        if (subscription) {
-          await savePushSubscription(subscription, Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
-          if (active) setPushEnabled(true);
-        }
-      })
-      .catch(() => {});
-    return () => { active = false; };
-  }, [notificationPermission, user?.id]);
-
-  if (!authReady) {
-    return <main className="auth-screen"><p className="auth-description">Loading your account...</p></main>;
-  }
-  if (!user || isPasswordRecovery) return (
-    <AuthenticationScreen
-      theme={theme}
-      onThemeChange={() => setTheme((current) => current === 'light' ? 'dark' : 'light')}
-      isPasswordRecovery={isPasswordRecovery}
-      onPasswordRecoveryComplete={finishPasswordRecovery}
-      onInstallApp={installApp}
-      isAppInstalled={isAppInstalled}
-      installHelp={installHelp}
-    />
-  );
 
   return (
     <div className="app-shell min-h-screen bg-slate-950 text-slate-100" data-theme={theme}>
@@ -697,7 +419,7 @@ export default function App() {
           {installHelp && !isAppInstalled && <p className="install-app-help planner-install-help" role="status">{installHelp}</p>}
 
           <div className="account-bar">
-            <span title={user.email}>{user.email}</span>
+            <span>Device-only planner</span>
             <div className="account-actions">
               <button
                 className="theme-toggle"
@@ -712,11 +434,10 @@ export default function App() {
                   <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" /></svg>
                 )}
               </button>
-              <button type="button" onClick={signOut}>Sign out</button>
             </div>
           </div>
           <p className="mb-4 text-xs text-slate-400" role="status">
-            {isOnline ? 'Online · activity history syncs to your account' : 'Offline · saved activities and history are available on this device'}
+            {isOnline ? 'Online · your timetable is saved on this device' : 'Offline · your timetable is saved on this device'}
           </p>
 
           <div className="calendar-controls mb-5 flex items-center gap-2">
@@ -755,28 +476,26 @@ export default function App() {
           <button
             type="button"
             onClick={requestNotificationPermission}
-            disabled={pushEnabled || notificationPermission === 'denied' || notificationPermission === 'unsupported'}
+            disabled={notificationPermission === 'granted' || notificationPermission === 'denied' || notificationPermission === 'unsupported'}
             className="notification-toggle mb-5 w-full rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-100 transition hover:bg-cyan-500/20 disabled:cursor-default disabled:opacity-70"
           >
-            {pushEnabled
-              ? 'Reminders enabled for this account'
+            {notificationPermission === 'granted'
+              ? 'Device notifications enabled'
               : notificationPermission === 'denied'
                 ? 'Notifications blocked in browser settings'
                 : notificationPermission === 'unsupported'
                   ? 'Browser notifications unavailable'
-                  : notificationPermission === 'granted'
-                    ? 'Finish enabling push reminders'
-                    : 'Enable account reminders'}
+                  : 'Enable device notifications'}
           </button>
           <button
             type="button"
             onClick={alarmSoundEnabled ? () => setAlarmSoundEnabled(false) : enableAlarmSound}
             className="mb-2 w-full rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100 transition hover:bg-emerald-500/20"
           >
-            {alarmSoundEnabled ? 'Alarm tone enabled on this device' : 'Enable alarm tone'}
+            {alarmSoundEnabled ? 'Loud alarm enabled on this device' : 'Enable loud alarm'}
           </button>
           <p className="mb-5 text-xs text-slate-400">
-            Offline alarms work while the app is open. Online push reminders can arrive while it is closed.
+            Loud alarms and notifications work while this app is open. Enable the alarm once to allow sound playback.
           </p>
 
           <form onSubmit={createActivity} className="activity-form rounded-2xl border border-white/10 bg-slate-900/80 p-4 shadow-glow">

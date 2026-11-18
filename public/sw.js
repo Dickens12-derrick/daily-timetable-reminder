@@ -1,11 +1,19 @@
-const CACHE_NAME = 'daily-timetable-cache-v3';
+const CACHE_NAME = 'daily-timetable-cache-v4';
 const APP_SHELL = ['./', '/index.html', '/manifest.json', '/icon.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll([...APP_SHELL, '/icon-192.png', '/icon-512.png', '/icon-maskable.png', '/apple-touch-icon.png']))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(async (cache) => {
+      await cache.addAll([...APP_SHELL, '/icon-192.png', '/icon-512.png', '/icon-maskable.png', '/apple-touch-icon.png']);
+      const index = await cache.match('/index.html');
+      if (index) {
+        const html = await index.text();
+        const assets = [...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css))"/g)]
+          .map(([, asset]) => new URL(asset, self.location.origin).pathname);
+        if (assets.length) await cache.addAll(assets);
+      }
+      await self.skipWaiting();
+    })
   );
 });
 
@@ -25,20 +33,25 @@ self.addEventListener('fetch', (event) => {
   if (requestUrl.pathname.startsWith('/api/')) return;
 
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(requestUrl.pathname);
+      if (cached && event.request.mode !== 'navigate') return cached;
+
+      try {
+        const response = await fetch(event.request);
         if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          await cache.put(event.request, response.clone());
+        } else if (cached) {
+          return cached;
         }
         return response;
-      })
-      .catch(async () => {
-        const cached = await caches.match(event.request);
+      } catch {
         if (cached) return cached;
-        if (event.request.mode === 'navigate') return caches.match('/index.html');
+        if (event.request.mode === 'navigate') return cache.match('/index.html');
         return Response.error();
-      })
+      }
+    })()
   );
 });
 

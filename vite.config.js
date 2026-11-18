@@ -11,6 +11,15 @@ const apiProxy = {
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'three-vendor': ['three'],
+        },
+      },
+    },
+  },
   server: {
     host: '0.0.0.0',
     port: 5175,
